@@ -4,46 +4,47 @@ module.exports = {
   config: {
     name: "profile",
     aliases: ["pp", "pfp"],
-    version: "1.1",
-    author: "NIB",
+    version: "1.0",
+    author: "Saimx69x",
     countDown: 5,
     role: 0,
-    shortDescription: "PROFILE image",
-    longDescription: "PROFILE image",
+    shortDescription: "Show user's profile picture",
+    longDescription: "View profile picture of yourself, a tagged user, replied user, or a specific UID.",
     category: "image",
     guide: {
-      en: "   {pn} @tag or reply to see profile picture"
+      en: "{pn} [@tag | reply | uid] — Show profile picture"
     }
   },
 
-  langs: {
-    vi: {
-      noTag: "Bạn phải tag người bạn muốn tát"
-    },
-    en: {
-      noTag: "You must tag the person you want to get profile picture of"
-    }
-  },
+  onStart: async function ({ event, message, args, usersData }) {
+    try {
+      let targetID;
 
-  onStart: async function ({ event, message, usersData }) {
-    let avt;
-    const uid1 = event.senderID;
-    const uid2 = Object.keys(event.mentions)[0];
-
-    if (event.type === "message_reply") {
-      avt = await usersData.getAvatarUrl(event.messageReply.senderID);
-    } else {
-      if (!uid2) {
-        avt = await usersData.getAvatarUrl(uid1);
-      } else {
-        avt = await usersData.getAvatarUrl(uid2);
+      if (event.type === "message_reply") {
+        targetID = event.messageReply.senderID;
+      } 
+      else if (Object.keys(event.mentions)[0]) {
+        targetID = Object.keys(event.mentions)[0];
+      } 
+      else if (args[0] && !isNaN(args[0])) {
+        targetID = args[0];
+      } 
+      else {
+        targetID = event.senderID;
       }
-    }
 
-    return message.reply({
-      body: "",
-      attachment: await global.utils.getStreamFromURL(avt)
-    });
+      const name = await usersData.getName(targetID).catch(() => "Unknown User");
+      const avatarURL = await usersData.getAvatarUrl(targetID);
+
+      return message.reply({
+        body: `🖼️ 𝑷𝒓𝒐𝒇𝒊𝒍𝒆 𝑷𝒊𝒄𝒕𝒖𝒓𝒆 𝒐𝒇\n✨️ ${name} (${targetID})`,
+        attachment: await global.utils.getStreamFromURL(avatarURL)
+      });
+
+    } catch (err) {
+      console.error(err);
+      return message.reply("❌ Could not fetch the profile picture. Maybe UID is invalid or privacy blocked.");
+    }
   }
 };
 
