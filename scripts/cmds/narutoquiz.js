@@ -34,13 +34,13 @@ module.exports = {
       const quizApiBase = rawRes.data.apiv1;
 
       const { data } = await axios.get(`${quizApiBase}/api/narutoqz`);
-      const { image, options, answer, message } = data;
+      const { image, options, answer } = data;
 
       const imageStream = await axios({ method: "GET", url: image, responseType: "stream" });
 
       const body = await toFont(`🥷 𝐍𝐚𝐫𝐮𝐭𝐨 𝐐𝐮𝐢𝐳 🍃
 ━━━━━━━━━━━━━━
-📷 Guess the naruto character!
+📷 Guess the Naruto character!
 
 🅐 ${options.A}
 🅑 ${options.B}
@@ -54,7 +54,7 @@ module.exports = {
         { body, attachment: imageStream.data },
         event.threadID,
         async (err, info) => {
-          if (err) return;
+          if (err) return console.error(err);
 
           global.GoatBot.onReply.set(info.messageID, {
             commandName: this.config.name,
@@ -66,10 +66,15 @@ module.exports = {
             answered: false
           });
 
-          setTimeout(() => {
+          setTimeout(async () => {
             const quizData = global.GoatBot.onReply.get(info.messageID);
             if (quizData && !quizData.answered) {
-              global.GoatBot.onReply.delete(info.messageID);
+              try {
+                await api.unsendMessage(info.messageID);
+                global.GoatBot.onReply.delete(info.messageID);
+              } catch (e) {
+                console.error("Failed to unsend quiz message:", e.message);
+              }
             }
           }, 90000);
         },
@@ -97,7 +102,11 @@ module.exports = {
     }
 
     if (reply === correctAnswer) {
-      await api.unsendMessage(messageID);
+      try {
+        await api.unsendMessage(messageID);
+      } catch (e) {
+        console.error("Failed to unsend quiz message:", e.message);
+      }
 
       const rewardCoin = 400;
       const rewardExp = 150;
@@ -129,7 +138,11 @@ module.exports = {
 ⏳ You still have ${chances} chance(s) left. Try again!`);
         return api.sendMessage(wrongTryMsg, event.threadID, event.messageID);
       } else {
-        await api.unsendMessage(messageID);
+        try {
+          await api.unsendMessage(messageID);
+        } catch (e) {
+          console.error("Failed to unsend quiz message:", e.message);
+        }
         const wrongMsg = await toFont(`🥺 Out of chances!
 ✅ The correct option was: ${correctAnswer}`);
         return api.sendMessage(wrongMsg, event.threadID, event.messageID);
