@@ -9,7 +9,7 @@ module.exports = {
     countDown: 10,
     role: 0,
     category: "game",
-    guide: { en: "{pn} — General knowledge quiz" }
+    guide: { en: "{pn} — Answer quiz questions and earn rewards!" }
   },
 
   onStart: async function ({ api, event }) {
@@ -21,17 +21,19 @@ module.exports = {
       const { data } = await axios.get(`${quizApiBase}/api/quiz`);
       const { question, options, answer } = data;
 
-      const body = `🧠 𝐆𝐞𝐧𝐞𝐫𝐚𝐥 𝐐𝐮𝐢𝐳 🎯
-━━━━━━━━━━━━━━
-𓆩♡𓆪 প্রশ্ন: ${question}
+      const body = `╭──❖   𝐐𝐔𝐈𝐙  𝐆𝐀𝐌𝐄   ❖──╮
+
+📜 প্রশ্ন: ${question}
 
 🅐 ${options.a}
 🅑 ${options.b}
 🅒 ${options.c}
 🅓 ${options.d}
 
+────────────────
 💡 ৩ বার চেষ্টা করতে পারবে!
-(Reply দাও A, B, C বা D)`;
+(Reply দাও A, B, C বা D) 
+╰───────────────╯`;
 
       api.sendMessage(
         { body },
@@ -66,7 +68,7 @@ module.exports = {
       return api.sendMessage("⚠️ এটা তোমার কুইজ না!", event.threadID, event.messageID);
 
     if (!reply || !["A", "B", "C", "D"].includes(reply))
-      return api.sendMessage("❌ Reply দাও A, B, C বা D দিয়ে!", event.threadID, event.messageID);
+      return api.sendMessage("❌ Reply দাও শুধু A, B, C বা D দিয়ে!", event.threadID, event.messageID);
 
     const selectedText =
       reply === "A" ? options.a :
@@ -84,22 +86,15 @@ module.exports = {
       userData.exp += rewardExp;
       await usersData.set(event.senderID, userData);
 
-      const correctMsg = `━━━━━━━━━━━━━━
-🎯 𝐐𝐮𝐢𝐳 𝐑𝐞𝐬𝐮𝐥𝐭
-╭─╼━━━━━━━━╾─╮
-│ অবস্থা     : ✅ সঠিক উত্তর!
+      const correctMsg = `╭──✅  𝐐𝐔𝐈𝐙 𝐑𝐄𝐒𝐔𝐋𝐓  ✅──╮
+│ অবস্থা     : সঠিক উত্তর!
 │ উত্তর       : ${correctAnswer}
 │ পুরস্কার   : +${rewardCoin} Coin
 │ অভিজ্ঞতা   : +${rewardExp} EXP
-│ অভিনন্দন!  তুমি দুর্দান্ত করেছো!
-╰─━━━━━━━━━╾─╯
-━━━━━━━━━━━━━━`;
+│ 🏆 তুমি দুর্দান্ত করেছো!
+╰───────────────╯`;
 
-      if (global.GoatBot.onReply.has(messageID)) {
-        global.GoatBot.onReply.get(messageID).answered = true;
-        global.GoatBot.onReply.delete(messageID);
-      }
-
+      global.GoatBot.onReply.delete(messageID);
       return api.sendMessage(correctMsg, event.threadID, event.messageID);
     } else {
       chances--;
@@ -107,12 +102,12 @@ module.exports = {
       if (chances > 0) {
         global.GoatBot.onReply.set(messageID, { ...Reply, chances });
         const wrongTryMsg = `❌ ভুল উত্তর!
-⏳ তোমার হাতে আছে ${chances} বার সুযোগ! আবার চেষ্টা করো!`;
+🔁 তোমার হাতে আছে ${chances} বার সুযোগ! আবার চেষ্টা করো!`;
         return api.sendMessage(wrongTryMsg, event.threadID, event.messageID);
       } else {
         try { await api.unsendMessage(messageID); } catch {}
         const wrongMsg = `😢 সব সুযোগ শেষ!
-✅ সঠিক উত্তর ছিল: ${correctAnswer}`;
+✅ সঠিক উত্তর ছিল ➤ ${correctAnswer}`;
         return api.sendMessage(wrongMsg, event.threadID, event.messageID);
       }
     }
