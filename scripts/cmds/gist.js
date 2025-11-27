@@ -1,17 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-
 const baseApiUrl = async () => {
-  const base = await axios.get('https://raw.githubusercontent.com/Saim12678/Saim/main/baseApiUrl.json');
-  return base.data.api;
+  const base = await axios.get('https://raw.githubusercontent.com/Saim-x69x/sakura/main/ApiUrl.json');
+  return base.data.gist;
 };
 
 module.exports = {
   config: {
     name: "gist",
-    version: "2.1",
-    role: 4, // Only role 4 bot developer can use the command 
+    version: "2.0",
+    role: 4,
     author: "Saimx69x",
     usePrefix: true,
     description: "Generate a Gist link from replied code or from local bot files",
@@ -99,16 +98,7 @@ module.exports = {
       const link = response.data?.data;
       if (!link) throw new Error("Invalid API response");
 
-      const gistMsg = `
-━━━━━━━━━━━━━━
-𝐆𝐢𝐬𝐭 𝐂𝐫𝐞𝐚𝐭𝐞𝐝 ✅
-╭─╼━━━━━━━━╾─╮
-│ File       : ${fileName}
-│ Status     : Success
-│ Link       : ${link}
-╰─━━━━━━━━━╾─╯
-━━━━━━━━━━━━━━
-`;
+      const gistMsg = `${link}`;
 
       return api.sendMessage(gistMsg, event.threadID, event.messageID);
 
