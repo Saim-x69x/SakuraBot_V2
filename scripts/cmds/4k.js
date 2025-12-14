@@ -2,7 +2,7 @@ const a = require("axios");
 const f = require("fs");
 const p = require("path");
 
-const u = "http://65.109.80.126:20409/aryan/4k";
+const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
 
 module.exports = {
   config: {
@@ -32,12 +32,19 @@ module.exports = {
     const i = event.messageReply.attachments[0].url;
     const t = p.join(__dirname, "cache", `upscaled_${Date.now()}.png`);
     let m;
+    let baseApi;
 
     try {
+      const configRes = await a.get(nix);
+      baseApi = configRes.data && configRes.data.api;
+      if (!baseApi) throw new Error("Configuration Error: Missing API in GitHub JSON.");
+
+      const apiUrl = `${baseApi}/4k`;
+      
       const r = await message.reply("🔄 Processing your image, please wait...");
       m = r.messageID;
 
-      const d = await a.get(`${u}?imageUrl=${encodeURIComponent(i)}`);
+      const d = await a.get(`${apiUrl}?imageUrl=${encodeURIComponent(i)}`);
       if (!d.data.status) throw new Error(d.data.message || "API error");
 
       const x = await a.get(d.data.enhancedImageUrl, { responseType: "stream" });
@@ -55,7 +62,11 @@ module.exports = {
       });
     } catch (e) {
       console.error("Upscale Error:", e);
-      message.reply("❌ An error occurred while upscaling the image. Please try again later.");
+      if (!baseApi) {
+        message.reply("❌ Failed to fetch API configuration from GitHub.");
+      } else {
+        message.reply("❌ An error occurred while upscaling the image. Please try again later.");
+      }
     } finally {
       if (m) message.unsend(m);
       if (f.existsSync(t)) f.unlinkSync(t);
