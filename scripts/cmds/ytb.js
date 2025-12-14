@@ -3,7 +3,7 @@ const b = require("axios");
 const c = require("fs");
 const d = require("path");
 
-const e = "http://65.109.80.126:20409/aryan/yx";
+const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
 
 async function f(g) {
   const h = await b({ url: g, responseType: "stream" });
@@ -24,6 +24,18 @@ module.exports = {
   },
 
   onStart: async function ({ api: i, args, event: k, commandName: l }) {
+    let e;
+    try {
+      const apiConfig = await b.get(nix);
+      e = apiConfig.data && apiConfig.data.api;
+      if (!e) {
+        return i.sendMessage("❌ Configuration Error: GitHub apis.json is missing the 'api' field.", k.threadID, k.messageID);
+      }
+    } catch (error) {
+      console.error("API Config Fetch Error:", error);
+      return i.sendMessage("❌ Failed to fetch API configuration from GitHub.", k.threadID, k.messageID);
+    }
+
     const aryan = args;
     const n = aryan[0];
     if (!["-v", "-a"].includes(n)) return i.sendMessage("❌ Usage: /ytb [-a|-v] <search or YouTube URL>", k.threadID, k.messageID);
@@ -32,8 +44,8 @@ module.exports = {
     if (!o) return i.sendMessage("❌ Provide a search query or URL.", k.threadID, k.messageID);
 
     if (o.startsWith("http")) {
-      if (n === "-v") return await p(o, "mp4", i, k);
-      else return await p(o, "mp3", i, k);
+      if (n === "-v") return await p(o, "mp4", i, k, e);
+      else return await p(o, "mp3", i, k, e);
     }
 
     try {
@@ -58,7 +70,8 @@ module.exports = {
             messageID: y.messageID,
             author: k.senderID,
             results: r,
-            type: n
+            type: n,
+            baseApi: e
           });
         },
         k.messageID
@@ -70,7 +83,9 @@ module.exports = {
   },
 
   onReply: async function ({ event: z, api: A, Reply: B }) {
-    const { results: C, type: D } = B;
+    const { results: C, type: D, baseApi: e } = B;
+    if (!e) return A.sendMessage("❌ Configuration lost. Please try the command again.", z.threadID, z.messageID);
+
     const E = parseInt(z.body);
 
     if (isNaN(E) || E < 1 || E > C.length) return A.sendMessage("❌ Invalid selection. Choose 1-6.", z.threadID, z.messageID);
@@ -78,14 +93,14 @@ module.exports = {
     const F = C[E - 1];
     await A.unsendMessage(B.messageID);
 
-    if (D === "-v") await p(F.url, "mp4", A, z);
-    else await p(F.url, "mp3", A, z);
+    if (D === "-v") await p(F.url, "mp4", A, z, e);
+    else await p(F.url, "mp3", A, z, e);
   }
 };
 
-async function p(q, r, s, t) {
+async function p(q, r, s, t, e) {
   try {
-    const { data: u } = await b.get(`${e}?url=${encodeURIComponent(q)}&type=${r}`);
+    const { data: u } = await b.get(`${e}/yx?url=${encodeURIComponent(q)}&type=${r}`);
     const v = u.download_url;
     if (!u.status || !v) throw new Error("API failed");
 
@@ -109,4 +124,4 @@ async function p(q, r, s, t) {
     console.error(`${r} error:`, err.message);
     s.sendMessage(`❌ Failed to download ${r}.`, t.threadID, t.messageID);
   }
-  }
+    }
