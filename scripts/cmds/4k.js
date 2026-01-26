@@ -1,75 +1,95 @@
-const a = require("axios");
-const f = require("fs");
-const p = require("path");
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
-const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
+const apiurl =
+  "https://raw.githubusercontent.com/Saim-x69x/sakura/main/ApiUrl.json";
+
+async function getApiUrl() {
+  const res = await axios.get(apiurl);
+  return res.data.apiv4;
+}
 
 module.exports = {
   config: {
     name: "4k",
     aliases: ["upscale"],
-    version: "1.1",
-    role: 0,
-    author: "ArYAN",
-    countDown: 10,
-    longDescription: "Upscale images to 4K resolution.",
+    version: "1.0",
+    author: "Saimx69x (Api by fahim)",
     category: "image",
-    guide: {
-      en: "${pn} reply to an image to upscale it to 4K resolution."
-    }
+    shortDescription: "Upscale image to 4K",
+    longDescription: "Upscales replied or attached image to 4K quality",
+    guide: "{pn} (reply to image)"
   },
 
-  onStart: async function ({ message, event }) {
-    if (
-      !event.messageReply ||
-      !event.messageReply.attachments ||
-      !event.messageReply.attachments[0] ||
-      event.messageReply.attachments[0].type !== "photo"
-    ) {
-      return message.reply("📸 Please reply to an image to upscale it.");
-    }
-
-    const i = event.messageReply.attachments[0].url;
-    const t = p.join(__dirname, "cache", `upscaled_${Date.now()}.png`);
-    let m;
-    let baseApi;
+  onStart: async function ({ api, event }) {
+    let imageUrl = "";
+    let processingMsg;
 
     try {
-      const configRes = await a.get(nix);
-      baseApi = configRes.data && configRes.data.api;
-      if (!baseApi) throw new Error("Configuration Error: Missing API in GitHub JSON.");
-
-      const apiUrl = `${baseApi}/4k`;
-      
-      const r = await message.reply("🔄 Processing your image, please wait...");
-      m = r.messageID;
-
-      const d = await a.get(`${apiUrl}?imageUrl=${encodeURIComponent(i)}`);
-      if (!d.data.status) throw new Error(d.data.message || "API error");
-
-      const x = await a.get(d.data.enhancedImageUrl, { responseType: "stream" });
-      const w = f.createWriteStream(t);
-      x.data.pipe(w);
-
-      await new Promise((res, rej) => {
-        w.on("finish", res);
-        w.on("error", rej);
-      });
-
-      await message.reply({
-        body: "✅ Your 4K upscaled image is ready!",
-        attachment: f.createReadStream(t),
-      });
-    } catch (e) {
-      console.error("Upscale Error:", e);
-      if (!baseApi) {
-        message.reply("❌ Failed to fetch API configuration from GitHub.");
+      if (event.messageReply?.attachments?.length) {
+        imageUrl = event.messageReply.attachments[0].url;
+      } else if (event.attachments?.length) {
+        imageUrl = event.attachments[0].url;
       } else {
-        message.reply("❌ An error occurred while upscaling the image. Please try again later.");
+        return api.sendMessage(
+          "❌ Please reply to or attach an image.",
+          event.threadID,
+          event.messageID
+        );
       }
-    } finally {
-      if (m) message.unsend(m);
-      if (f.existsSync(t)) f.unlinkSync(t);
+
+      processingMsg = await api.sendMessage(
+        "⏳ Upscaling image to 4K, please wait...",
+        event.threadID,
+        null,
+        event.messageID
+      );
+
+      const BASE_API = await getApiUrl();
+      const apiUrl = `${BASE_API}/4k?url=${encodeURIComponent(imageUrl)}`;
+
+      const res = await axios.get(apiUrl);
+
+      if (!res.data?.image) throw new Error("Invalid API response");
+
+      const imgPath = path.join(__dirname, "cache", `${Date.now()}_4k.jpg`);
+
+      const imgRes = await axios.get(res.data.image, {
+        responseType: "arraybuffer"
+      });
+
+      await fs.ensureDir(path.dirname(imgPath));
+      await fs.writeFile(imgPath, imgRes.data);
+
+      await api.sendMessage(
+        {
+          body: "✅ Image upscaled to 4K successfully!",
+          attachment: fs.createReadStream(imgPath)
+        },
+        event.threadID,
+        null,
+        event.messageID
+      );
+
+      if (processingMsg?.messageID) {
+        api.unsendMessage(processingMsg.messageID);
+      }
+
+      await fs.remove(imgPath);
+
+    } catch (error) {
+      console.error("4k command error:", error);
+
+      if (processingMsg?.messageID) {
+        api.unsendMessage(processingMsg.messageID);
+      }
+
+      api.sendMessage(
+        "❌ Failed to upscale image. Please try again later.",
+        event.threadID,
+        event.messageID
+      );
     }
   }
 };
