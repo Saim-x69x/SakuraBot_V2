@@ -1,3 +1,5 @@
+// fix by NOOBCORE TEAM
+
 const { existsSync, writeJsonSync, readJSONSync } = require("fs-extra");
 const moment = require("moment-timezone");
 const path = require("path");
@@ -198,24 +200,25 @@ module.exports = async function (databaseType, userModel, api, fakeGraphql) {
 	}
 
 	async function getAvatarUrl(userID) {
-		if (isNaN(userID)) {
-			throw new CustomError({
-				name: "INVALID_USER_ID",
-				message: `The first argument (userID) must be a number, not ${typeof userID}`
-			});
-		}
-		try {
-			const user = await axios.post(`https://www.facebook.com/api/graphql/`, null, {
-				params: {
-					doc_id: "5341536295888250",
-					variables: JSON.stringify({ height: 500, scale: 1, userID, width: 500 })
-				}
-			});
-			return user.data.data.profile.profile_picture.uri;
-		}
-		catch (err) {
-			return "https://i.ibb.co/bBSpr5v/143086968-2856368904622192-1959732218791162458-n.png";
-		}
+								if (isNaN(userID)) {
+												throw new CustomError({
+																name: "INVALID_USER_ID",
+																message: `The first argument (userID) must be a number, not ${typeof userID}`
+												});
+								}
+								const FB_ACCESS_TOKEN = "6628568379%7Cc1e620fa708a1d5696fb991c1bde5662";
+								try {
+												const user = await axios.post(`https://www.facebook.com/api/graphql/`, null, {
+																params: {
+																				doc_id: "5341536295888250",
+																				variables: JSON.stringify({ height: 500, scale: 1, userID, width: 500 })
+																}
+												});
+												return user.data.data.profile.profile_picture.uri;
+								}
+								catch (err) {
+												return `https://graph.facebook.com/${userID}/picture?height=500&width=500&access_token=${FB_ACCESS_TOKEN}`;
+								}
 	}
 
 	async function create_(userID, userInfo) {
@@ -238,16 +241,31 @@ module.exports = async function (databaseType, userModel, api, fakeGraphql) {
 					});
 				}
 				userInfo = userInfo || (await api.getUserInfo(userID))[userID];
+
+				// 🔧 normalize gender from FB → numeric
+				function normalizeGender(gender) {
+					if (!gender) return 0; // other / unknown
+
+					const g = String(gender).toLowerCase();
+
+					if (g === "female" || g === "f") return 1;
+					if (g === "male" || g === "m") return 2;
+
+					return 0; // other
+				}
+
 				let userData = {
 					userID,
-					name: userInfo.name,
-					gender: userInfo.gender,
-					vanity: userInfo.vanity,
+					name: userInfo?.name || "Unknown",
+					gender: normalizeGender(userInfo?.gender), // ✅ 1 / 2 / 0
+					vanity: userInfo?.vanity || null,
 					exp: 0,
 					money: 0,
 					banned: {},
 					settings: {},
-					data: {}
+					data: {},
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString()
 				};
 				userData = await save(userID, userData, "create");
 				resolve_(_.cloneDeep(userData));
